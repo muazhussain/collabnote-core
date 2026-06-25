@@ -23,5 +23,5 @@ class User(Base):
         UniqueConstraint("username", name="uq_users_username"),
     )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # noqa: D105
         return f"<User(id={self.id}, email='{self.email}', username='{self.username}')>"
