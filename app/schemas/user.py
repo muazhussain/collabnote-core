@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreate(BaseModel):
@@ -7,7 +8,7 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     username: str = Field(min_length=3, max_length=50)
-    password: str = Field(min_length=6, description="minimum 6 characters")
+    password: str = Field(min_length=6, description="Minimum 6 characters")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -41,16 +42,3 @@ class UserOut(BaseModel):
             }
         },
     )
-
-
-class Token(BaseModel):
-    """Schema for JWT token response."""
-
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    """Schema for decoded JWT token payload."""
-
-    email: str | None = None
