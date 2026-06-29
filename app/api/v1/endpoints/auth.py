@@ -67,5 +67,5 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> To
             detail="Invalid credentials.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token)

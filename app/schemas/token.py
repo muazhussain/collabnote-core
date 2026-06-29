@@ -11,4 +11,4 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Schema for decoded JWT token payload."""
 
-    email: str | None = None
+    user_id: int | None = None

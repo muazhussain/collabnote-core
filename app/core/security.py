@@ -3,7 +3,7 @@ from typing import Optional
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
 from app.core.config import settings
 
@@ -34,7 +34,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     try:
         return _ph.verify(hash=hashed_password, password=plain_password)
-    except VerifyMismatchError:
+    except (VerifyMismatchError, InvalidHashError):
         return False
 
 
@@ -63,13 +63,13 @@ def decode_access_token(token: str) -> Optional[str]:
         token: JWT string to decode.
 
     Returns:
-        Subject (email) from token payload, or None if invalid.
+        Subject (user ID as string) from token payload, or None if invalid.
     """
     try:
         payload = jwt.decode(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
-        email: Optional[str] = payload.get("sub")
-        return email
+        user_id: Optional[str] = payload.get("sub")
+        return user_id
     except jwt.PyJWTError:
         return None

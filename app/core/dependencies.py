@@ -26,13 +26,13 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if token is invalid or user is inactive/not found.
     """
-    email = decode_access_token(creds.credentials)
-    if not email:
+    user_id = decode_access_token(creds.credentials)
+    if not user_id:
         raise HTTPException(
             detail="Invalid token.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(
