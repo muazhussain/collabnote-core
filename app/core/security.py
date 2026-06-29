@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -52,24 +53,20 @@ def create_access_token(data: dict, expire_delta: Optional[timedelta] = None) ->
     expire = datetime.now(timezone.utc) + (
         expire_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "jti": str(uuid.uuid4())})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> Optional[dict]:
     """Decode and validate JWT access token.
 
     Args:
         token: JWT string to decode.
 
     Returns:
-        Subject (user ID as string) from token payload, or None if invalid.
+        Decoded token payload, or None if invalid.
     """
     try:
-        payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
-        )
-        user_id: Optional[str] = payload.get("sub")
-        return user_id
+        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except jwt.PyJWTError:
         return None
