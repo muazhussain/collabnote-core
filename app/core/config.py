@@ -8,6 +8,7 @@ class Settings(BaseSettings):
         app_name: Application name.
         version: Application version.
         database_url: PostgreSQL connection URL.
+        redis_url: Redis connection URL.
         mongodb_url: MongoDB connection URL.
         mongodb_db_name: MongoDB database name.
         secret_key: Secret key for JWT signing.
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
     app_name: str = "Collabnote"
     version: str = "1.0.0"
     database_url: str
+    redis_url: str
     mongodb_url: str
     mongodb_db_name: str
     secret_key: str
