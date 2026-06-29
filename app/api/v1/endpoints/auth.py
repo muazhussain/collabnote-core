@@ -1,10 +1,21 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, hash_password, verify_password
-from app.db.session import get_db
+from app.core.dependencies import bearer, get_current_user
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
 from app.db.models.user import User
+from app.db.redis import get_redis
+from app.db.session import get_db
 from app.schemas.token import Token
 from app.schemas.user import LoginRequest, UserCreate, UserOut
 
@@ -69,3 +80,48 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> To
         )
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token)
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh(
+    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    current_user: User = Depends(get_current_user),
+    redis: Redis = Depends(get_redis),
+) -> Token:
+    """Issue a new access token and revoke the current one.
+
+    Args:
+        creds: Current Bearer token.
+        current_user: Authenticated user.
+        redis: Async Redis client.
+
+    Returns:
+        New JWT access token.
+    """
+    payload = decode_access_token(creds.credentials)
+    assert payload is not None
+    old_jti = payload["jti"]
+    ttl = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
+    if ttl > 0:
+        await redis.setex(f"deny:{old_jti}", ttl, "1")
+    return Token(access_token=create_access_token(data={"sub": str(current_user.id)}))
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    _: User = Depends(get_current_user),
+    redis: Redis = Depends(get_redis),
+) -> None:
+    """Revoke the current access token.
+
+    Args:
+        creds: Current Bearer token.
+        redis: Async Redis client.
+    """
+    payload = decode_access_token(creds.credentials)
+    assert payload is not None
+    jti = payload["jti"]
+    ttl = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
+    if ttl > 0:
+        await redis.setex(f"deny:{jti}", ttl, "1")
