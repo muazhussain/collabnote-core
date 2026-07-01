@@ -8,22 +8,24 @@ on:
 
 jobs:
   lint:
+    name: Format, Lint & Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - name: Install dependencies
+      - name: Install dev dependencies
         run: pip install -r requirements.dev.txt
-      - name: Check formatting
+      - name: Format check (black)
         run: black --check app
-      - name: Lint
+      - name: Lint (flake8)
         run: flake8 app
-      - name: Type check
+      - name: Type check (mypy)
         run: mypy app
 
   test:
+    name: Test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -53,7 +55,7 @@ jobs:
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongosh --eval 'quit(db.runCommand({ ping: 1 }).ok)'"
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
           --health-interval 5s
           --health-timeout 10s
           --health-retries 20
@@ -68,7 +70,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - name: Install dependencies
+      - name: Install dev dependencies
         run: pip install -r requirements.dev.txt
-      - name: Run tests
+      - name: Run tests (pytest)
         run: pytest
