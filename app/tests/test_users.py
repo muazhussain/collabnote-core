@@ -24,7 +24,9 @@ class TestGetProfile:
 
 class TestGetUser:
     async def test_success(self, client: AsyncClient, auth_headers: dict) -> None:
-        profile = (await client.get("/api/v1/users/profile", headers=auth_headers)).json()
+        profile = (
+            await client.get("/api/v1/users/profile", headers=auth_headers)
+        ).json()
         resp = await client.get(f"/api/v1/users/{profile['id']}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["id"] == profile["id"]
@@ -48,7 +50,9 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()["email"] == "updated@example.com"
 
-    async def test_update_username(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_update_username(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         resp = await client.patch(
             "/api/v1/users/profile",
             json={"username": "updateduser"},
@@ -57,7 +61,9 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()["username"] == "updateduser"
 
-    async def test_update_password(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_update_password(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         resp = await client.patch(
             "/api/v1/users/profile",
             json={"password": "newpassword123"},
@@ -77,7 +83,9 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         assert resp.json()["username"] == "testuser"
 
-    async def test_duplicate_email(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_duplicate_email(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         await client.post("/api/v1/auth/register", json=_OTHER_USER)
         resp = await client.patch(
             "/api/v1/users/profile",
@@ -86,7 +94,9 @@ class TestUpdateProfile:
         )
         assert resp.status_code == 409
 
-    async def test_duplicate_username(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_duplicate_username(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         await client.post("/api/v1/auth/register", json=_OTHER_USER)
         resp = await client.patch(
             "/api/v1/users/profile",
