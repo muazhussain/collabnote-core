@@ -22,6 +22,22 @@ class NoteCreate(BaseModel):
     )
 
 
+class NoteUpdate(BaseModel):
+    """Schema for note update request."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    content: str | None = Field(default=None, min_length=1)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "Updated Title",
+                "content": "Updated content.",
+            }
+        }
+    )
+
+
 class NoteOut(BaseModel):
     """Schema for note response."""
 
