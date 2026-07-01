@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [development, main]
+  pull_request:
+    branches: [development, main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: pip install -r requirements.dev.txt
+      - name: Check formatting
+        run: black --check app
+      - name: Lint
+        run: flake8 app
+      - name: Type check
+        run: mypy app
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: collabnote
+          POSTGRES_PASSWORD: collabnote
+          POSTGRES_DB: collabnote_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'quit(db.runCommand({ ping: 1 }).ok)'"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://collabnote:collabnote@localhost:5432/collabnote_test
+      REDIS_URL: redis://localhost:6379/0
+      MONGODB_URL: mongodb://localhost:27017
+      MONGODB_DB_NAME: collabnote_test
+      SECRET_KEY: ci-test-secret-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: pip install -r requirements.dev.txt
+      - name: Run tests
+        run: pytest
