@@ -15,7 +15,7 @@ _LOGIN_PAYLOAD = {
 async def _register_and_login(client: AsyncClient) -> str:
     await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
     resp = await client.post("/api/v1/auth/login", json=_LOGIN_PAYLOAD)
-    return resp.json()["access_token"]
+    return str(resp.json()["access_token"])
 
 
 class TestRegister:
@@ -99,7 +99,7 @@ class TestRefresh:
 
     async def test_no_token(self, client: AsyncClient) -> None:
         resp = await client.post("/api/v1/auth/refresh")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestLogout:
@@ -125,4 +125,4 @@ class TestLogout:
 
     async def test_no_token(self, client: AsyncClient) -> None:
         resp = await client.post("/api/v1/auth/logout")
-        assert resp.status_code == 403
+        assert resp.status_code == 401

@@ -10,7 +10,6 @@ from app.db.models.user import User
 from app.db.mongo import get_mongo_db
 from app.schemas.note import NoteCreate, NoteOut, NoteUpdate
 
-
 router = APIRouter(prefix="/notes", tags=["notes"])
 
 NOTES = "notes"

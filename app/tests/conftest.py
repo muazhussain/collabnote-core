@@ -1,12 +1,14 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 
+import psycopg
+import pymongo
 import pytest
+import redis as sync_redis_lib
 from httpx import ASGITransport, AsyncClient
-from motor.motor_asyncio import AsyncIOMotorClient
-from redis.asyncio import Redis
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+import app.db.mongo as _mongo_module
+import app.db.redis as _redis_module
 from app.core.config import settings
 from app.db.base import Base
 from app.main import app
@@ -32,27 +34,30 @@ async def create_tables() -> AsyncGenerator[None, None]:
 
 
 @pytest.fixture(autouse=True)
-async def clean_db() -> AsyncGenerator[None, None]:
+def clean_db() -> Generator[None, None, None]:
     yield
-    async with _TestSession() as session:
-        await session.execute(text("TRUNCATE TABLE users CASCADE"))
-        await session.commit()
+    url = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+    with psycopg.connect(url) as conn:
+        conn.execute("TRUNCATE TABLE users CASCADE")
+        conn.commit()
 
 
 @pytest.fixture(autouse=True)
-async def clean_redis() -> AsyncGenerator[None, None]:
+def clean_redis() -> Generator[None, None, None]:
     yield
-    redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    await redis.flushdb()
-    await redis.aclose()
+    r = sync_redis_lib.from_url(str(settings.redis_url))
+    r.flushdb()
+    r.close()
+    _redis_module._redis = None
 
 
 @pytest.fixture(autouse=True)
-async def clean_mongo() -> AsyncGenerator[None, None]:
+def clean_mongo() -> Generator[None, None, None]:
     yield
-    client: AsyncIOMotorClient = AsyncIOMotorClient(settings.mongodb_url)
-    await client[settings.mongodb_db_name]["notes"].drop()
+    client: pymongo.MongoClient = pymongo.MongoClient(settings.mongodb_url)
+    client[settings.mongodb_db_name]["notes"].drop()
     client.close()
+    _mongo_module._client = None
 
 
 @pytest.fixture
@@ -70,5 +75,5 @@ async def auth_headers(client: AsyncClient) -> dict:
         "/api/v1/auth/login",
         json={"username": _TEST_USER["username"], "password": _TEST_USER["password"]},
     )
-    token = resp.json()["access_token"]
+    token = str(resp.json()["access_token"])
     return {"Authorization": f"Bearer {token}"}

@@ -1,8 +1,16 @@
 .PHONY: dev run down clean \
         alembic-init alembic-revision migrate alembic-upgrade alembic-downgrade \
         alembic-history alembic-current alembic-heads \
-        test test-fast test-file \
-        lint lint-flake8 lint-black lint-mypy format shell logs help
+        test lint format shell logs help
+
+POSTGRES_USER     ?= postgres
+POSTGRES_PASSWORD ?= postgres
+MONGO_USER        ?= mongo
+MONGO_PASSWORD    ?= mongo
+
+TEST_PG_URL    = postgresql+psycopg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/collabnote_test
+TEST_REDIS_URL = redis://redis:6379/1
+TEST_MONGO_URL = mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:27017
 
 dev:          ## Build images, run migrations, start everything (first-time setup)
 	cp -n .env.example .env || true
@@ -45,31 +53,26 @@ alembic-heads:     ## Show current heads (detects diverging branches)
 
 # ---- Testing ----
 
-test:         ## Run full test suite with coverage report
-	docker compose run --rm api pytest app/tests/ -v --cov=app --cov-report=term-missing
-
-test-fast:    ## Run tests without coverage (faster feedback)
-	docker compose run --rm api pytest app/tests/ -v
-
-test-file:    ## Run single test file  e.g.: make test-file FILE=app/tests/test_api.py
-	docker compose run --rm api pytest $(FILE) -v
+test:         ## Run tests (requires: make run)  e.g.: make test T=app/tests/test_auth.py
+	docker compose exec postgres createdb -U $(POSTGRES_USER) collabnote_test 2>/dev/null || true
+	docker compose run --rm --no-deps \
+		-v $(CURDIR)/requirements.dev.txt:/app/requirements.dev.txt \
+		-e DATABASE_URL=$(TEST_PG_URL) \
+		-e REDIS_URL=$(TEST_REDIS_URL) \
+		-e MONGODB_URL=$(TEST_MONGO_URL) \
+		-e MONGODB_DB_NAME=collabnote_test \
+		api sh -c "pip install -r requirements.dev.txt -q && pytest $(or $(T),app/tests/) -v --cov=app --cov-report=term-missing"; \
+	EXIT=$$?; \
+	docker compose exec postgres dropdb -U $(POSTGRES_USER) --if-exists collabnote_test; \
+	exit $$EXIT
 
 # ---- Linting ----
 
 lint:         ## Run all linters (flake8 + black + mypy)
-	docker compose run --rm api sh -c "flake8 app/ && black --check app/ && mypy app/"
-
-lint-flake8:  ## Run flake8 + flake8-docstrings only
-	docker compose run --rm api flake8 app/
-
-lint-black:   ## Run black check only
-	docker compose run --rm api black --check app/
-
-lint-mypy:    ## Run mypy type check only
-	docker compose run --rm api mypy app/
+	flake8 app/ && black --check app/ && mypy app/
 
 format:       ## Auto-fix formatting with black (in-place)
-	docker compose run --rm api black app/
+	black app/
 
 # ---- Utils ----
 

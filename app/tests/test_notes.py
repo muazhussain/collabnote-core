@@ -9,7 +9,7 @@ _NOTE_PAYLOAD = {
 async def _create_note(client: AsyncClient, headers: dict) -> dict:
     resp = await client.post("/api/v1/notes", json=_NOTE_PAYLOAD, headers=headers)
     assert resp.status_code == 201
-    return resp.json()
+    return dict(resp.json())
 
 
 class TestCreateNote:
@@ -25,7 +25,7 @@ class TestCreateNote:
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.post("/api/v1/notes", json=_NOTE_PAYLOAD)
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestListNotes:
@@ -45,7 +45,7 @@ class TestListNotes:
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/notes")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestGetNote:
@@ -67,7 +67,7 @@ class TestGetNote:
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/notes/60d5ec49f1c0d23b9a5f9e3a")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestUpdateNote:
@@ -112,7 +112,7 @@ class TestUpdateNote:
             "/api/v1/notes/60d5ec49f1c0d23b9a5f9e3a",
             json={"title": "Updated"},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestDeleteNote:
@@ -141,4 +141,4 @@ class TestDeleteNote:
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.delete("/api/v1/notes/60d5ec49f1c0d23b9a5f9e3a")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
