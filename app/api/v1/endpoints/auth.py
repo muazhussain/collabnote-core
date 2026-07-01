@@ -103,7 +103,7 @@ async def refresh(
     old_jti = payload["jti"]
     ttl = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
     if ttl > 0:
-        await redis.setex(f"deny:{old_jti}", ttl, "1")
+        await redis.set(f"deny:{old_jti}", "1", ex=ttl)
     return Token(access_token=create_access_token(data={"sub": str(current_user.id)}))
 
 
@@ -124,4 +124,4 @@ async def logout(
     jti = payload["jti"]
     ttl = int(payload["exp"] - datetime.now(timezone.utc).timestamp())
     if ttl > 0:
-        await redis.setex(f"deny:{jti}", ttl, "1")
+        await redis.set(f"deny:{jti}", "1", ex=ttl)
