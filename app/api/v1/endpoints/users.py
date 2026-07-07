@@ -34,13 +34,17 @@ async def update_profile(
     if payload.email and payload.email != current_user.email:
         exists = await db.execute(select(User).where(User.email == payload.email))
         if exists.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already taken.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Email already taken."
+            )
         current_user.email = payload.email
 
     if payload.username and payload.username != current_user.username:
         exists = await db.execute(select(User).where(User.username == payload.username))
         if exists.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Username already taken."
+            )
         current_user.username = payload.username
 
     if payload.password:
@@ -68,14 +72,16 @@ async def get_user_notes(
     mongo: AsyncIOMotorDatabase = Depends(get_mongo_db),
     _: User = Depends(get_current_user),
 ) -> list[NoteOut]:
-    """Return all notes for a given user (hybrid: verifies user in PostgreSQL, fetches notes from MongoDB).
+    """Return all notes for a user (hybrid: PostgreSQL user check, MongoDB note fetch).
 
     Raises:
         HTTPException: 404 if user not found.
     """
     result = await db.execute(select(User).where(User.id == user_id))
     if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        )
     cursor = mongo["notes"].find({"user_id": user_id}).sort("created_at", -1)
     docs = await cursor.to_list(length=None)
     return [NoteOut.model_validate(doc) for doc in docs]
@@ -95,5 +101,7 @@ async def get_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        )
     return user
