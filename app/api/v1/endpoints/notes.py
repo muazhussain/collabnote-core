@@ -36,6 +36,7 @@ async def create_note(
         "user_id": current_user.id,
         "title": payload.title,
         "content": payload.content,
+        "tags": payload.tags,
         "created_at": now,
         "updated_at": now,
     }

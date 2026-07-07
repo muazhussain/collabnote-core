@@ -3,6 +3,7 @@ from httpx import AsyncClient
 _NOTE_PAYLOAD = {
     "title": "Test Note",
     "content": "This is a test note.",
+    "tags": ["test", "python"],
 }
 
 
@@ -21,7 +22,17 @@ class TestCreateNote:
         data = resp.json()
         assert data["title"] == _NOTE_PAYLOAD["title"]
         assert data["content"] == _NOTE_PAYLOAD["content"]
+        assert data["tags"] == _NOTE_PAYLOAD["tags"]
         assert "_id" in data
+
+    async def test_default_empty_tags(self, client: AsyncClient, auth_headers: dict) -> None:
+        resp = await client.post(
+            "/api/v1/notes",
+            json={"title": "No Tags", "content": "Content without tags."},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["tags"] == []
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.post("/api/v1/notes", json=_NOTE_PAYLOAD)
@@ -81,6 +92,16 @@ class TestUpdateNote:
         assert resp.status_code == 200
         assert resp.json()["title"] == "Updated Title"
         assert resp.json()["content"] == _NOTE_PAYLOAD["content"]
+
+    async def test_update_tags(self, client: AsyncClient, auth_headers: dict) -> None:
+        note = await _create_note(client, auth_headers)
+        resp = await client.put(
+            f"/api/v1/notes/{note['_id']}",
+            json={"tags": ["updated"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["tags"] == ["updated"]
 
     async def test_no_fields(self, client: AsyncClient, auth_headers: dict) -> None:
         note = await _create_note(client, auth_headers)

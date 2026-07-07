@@ -11,12 +11,14 @@ class NoteCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=200)
     content: str = Field(min_length=1)
+    tags: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "title": "My First Note",
                 "content": "This is the content of my note.",
+                "tags": ["fastapi", "python"],
             }
         }
     )
@@ -27,12 +29,14 @@ class NoteUpdate(BaseModel):
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
     content: str | None = Field(default=None, min_length=1)
+    tags: list[str] | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "title": "Updated Title",
                 "content": "Updated content.",
+                "tags": ["updated"],
             }
         }
     )
@@ -45,6 +49,7 @@ class NoteOut(BaseModel):
     user_id: int
     title: str
     content: str
+    tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -56,6 +61,7 @@ class NoteOut(BaseModel):
                 "user_id": 1,
                 "title": "My First Note",
                 "content": "This is the content of my note.",
+                "tags": ["fastapi", "python"],
                 "created_at": "2026-01-01T00:00:00",
                 "updated_at": "2026-01-01T00:00:00",
             }
