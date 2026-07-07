@@ -71,7 +71,9 @@ class TestGetUserNotes:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_user_not_found(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_user_not_found(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         resp = await client.get("/api/v1/users/99999/notes", headers=auth_headers)
         assert resp.status_code == 404
 

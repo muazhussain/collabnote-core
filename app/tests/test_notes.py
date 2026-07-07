@@ -25,7 +25,9 @@ class TestCreateNote:
         assert data["tags"] == _NOTE_PAYLOAD["tags"]
         assert "_id" in data
 
-    async def test_default_empty_tags(self, client: AsyncClient, auth_headers: dict) -> None:
+    async def test_default_empty_tags(
+        self, client: AsyncClient, auth_headers: dict
+    ) -> None:
         resp = await client.post(
             "/api/v1/notes",
             json={"title": "No Tags", "content": "Content without tags."},
