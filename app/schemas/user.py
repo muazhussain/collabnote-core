@@ -21,22 +21,6 @@ class UserCreate(BaseModel):
     )
 
 
-class LoginRequest(BaseModel):
-    """Schema for user login request."""
-
-    username: str
-    password: str
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "username": "alice",
-                "password": "securepassword123",
-            }
-        }
-    )
-
-
 class UserUpdate(BaseModel):
     """Schema for user update request."""
 
