@@ -16,6 +16,7 @@ testpaths = ["app/tests"]
 pythonpath = ["."]
 filterwarnings = ["ignore::pytest.PytestUnraisableExceptionWarning"]
 
+
 [tool.coverage.run]
 source = ["app"]
 omit = ["app/tests/*"]
