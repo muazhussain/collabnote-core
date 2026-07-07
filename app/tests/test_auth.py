@@ -1,76 +1,76 @@
 from httpx import AsyncClient
 
-_REGISTER_PAYLOAD = {
+_SIGNUP_PAYLOAD = {
     "email": "alice@example.com",
     "username": "alice",
     "password": "securepassword123",
 }
 
-_LOGIN_PAYLOAD = {
+_LOGIN_DATA = {
     "username": "alice",
     "password": "securepassword123",
 }
 
 
-async def _register_and_login(client: AsyncClient) -> str:
-    await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
-    resp = await client.post("/api/v1/auth/login", json=_LOGIN_PAYLOAD)
+async def _signup_and_login(client: AsyncClient) -> str:
+    await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
+    resp = await client.post("/api/v1/auth/login", data=_LOGIN_DATA)
     return str(resp.json()["access_token"])
 
 
-class TestRegister:
+class TestSignup:
     async def test_success(self, client: AsyncClient) -> None:
-        resp = await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
+        resp = await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
         assert resp.status_code == 201
         data = resp.json()
-        assert data["email"] == _REGISTER_PAYLOAD["email"]
-        assert data["username"] == _REGISTER_PAYLOAD["username"]
+        assert data["email"] == _SIGNUP_PAYLOAD["email"]
+        assert data["username"] == _SIGNUP_PAYLOAD["username"]
         assert data["is_active"] is True
         assert "id" in data
 
     async def test_duplicate_email(self, client: AsyncClient) -> None:
-        await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
+        await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
         resp = await client.post(
-            "/api/v1/auth/register",
-            json={**_REGISTER_PAYLOAD, "username": "alice2"},
+            "/api/v1/auth/signup",
+            json={**_SIGNUP_PAYLOAD, "username": "alice2"},
         )
         assert resp.status_code == 409
 
     async def test_duplicate_username(self, client: AsyncClient) -> None:
-        await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
+        await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
         resp = await client.post(
-            "/api/v1/auth/register",
-            json={**_REGISTER_PAYLOAD, "email": "alice2@example.com"},
+            "/api/v1/auth/signup",
+            json={**_SIGNUP_PAYLOAD, "email": "alice2@example.com"},
         )
         assert resp.status_code == 409
 
 
 class TestLogin:
     async def test_success(self, client: AsyncClient) -> None:
-        await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
-        resp = await client.post("/api/v1/auth/login", json=_LOGIN_PAYLOAD)
+        await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
+        resp = await client.post("/api/v1/auth/login", data=_LOGIN_DATA)
         assert resp.status_code == 200
         assert "access_token" in resp.json()
 
     async def test_wrong_password(self, client: AsyncClient) -> None:
-        await client.post("/api/v1/auth/register", json=_REGISTER_PAYLOAD)
+        await client.post("/api/v1/auth/signup", json=_SIGNUP_PAYLOAD)
         resp = await client.post(
             "/api/v1/auth/login",
-            json={**_LOGIN_PAYLOAD, "password": "wrongpassword"},
+            data={**_LOGIN_DATA, "password": "wrongpassword"},
         )
         assert resp.status_code == 401
 
     async def test_wrong_username(self, client: AsyncClient) -> None:
         resp = await client.post(
             "/api/v1/auth/login",
-            json={**_LOGIN_PAYLOAD, "username": "nonexistent"},
+            data={**_LOGIN_DATA, "username": "nonexistent"},
         )
         assert resp.status_code == 401
 
 
 class TestRefresh:
     async def test_success(self, client: AsyncClient) -> None:
-        token = await _register_and_login(client)
+        token = await _signup_and_login(client)
         resp = await client.post(
             "/api/v1/auth/refresh",
             headers={"Authorization": f"Bearer {token}"},
@@ -79,7 +79,7 @@ class TestRefresh:
         assert resp.json()["access_token"] != token
 
     async def test_old_token_revoked_after_refresh(self, client: AsyncClient) -> None:
-        token = await _register_and_login(client)
+        token = await _signup_and_login(client)
         await client.post(
             "/api/v1/auth/refresh",
             headers={"Authorization": f"Bearer {token}"},
@@ -104,7 +104,7 @@ class TestRefresh:
 
 class TestLogout:
     async def test_success(self, client: AsyncClient) -> None:
-        token = await _register_and_login(client)
+        token = await _signup_and_login(client)
         resp = await client.post(
             "/api/v1/auth/logout",
             headers={"Authorization": f"Bearer {token}"},
@@ -112,7 +112,7 @@ class TestLogout:
         assert resp.status_code == 204
 
     async def test_token_revoked_after_logout(self, client: AsyncClient) -> None:
-        token = await _register_and_login(client)
+        token = await _signup_and_login(client)
         await client.post(
             "/api/v1/auth/logout",
             headers={"Authorization": f"Bearer {token}"},

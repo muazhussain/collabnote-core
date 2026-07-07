@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,21 +17,14 @@ from app.db.models.user import User
 from app.db.redis import get_redis
 from app.db.session import get_db
 from app.schemas.token import Token
-from app.schemas.user import LoginRequest, UserCreate, UserOut
+from app.schemas.user import UserCreate, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
-    """Register a new user.
-
-    Args:
-        payload: User registration data.
-        db: Async database session.
-
-    Returns:
-        Success message.
+@router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def signup(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
+    """Register a new user account.
 
     Raises:
         HTTPException: 409 if email or username already exists.
@@ -43,8 +36,8 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> U
     )
     if result.scalar_one_or_none():
         raise HTTPException(
-            detail="Email or username already registered.",
             status_code=status.HTTP_409_CONFLICT,
+            detail="Email or username already registered.",
         )
     user = User(
         email=payload.email,
@@ -58,28 +51,23 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)) -> U
 
 
 @router.post("/login", response_model=Token)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token:
-    """Authenticate user and return an access token.
-
-    Args:
-        payload: User login credentials.
-        db: Async database session.
-
-    Returns:
-        JWT access token.
+async def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+) -> Token:
+    """Authenticate via OAuth2 password flow and return a JWT access token.
 
     Raises:
-        HTTPException: 401 if credentials are invalid.
+        HTTPException: 401 if credentials are invalid or account is inactive.
     """
-    result = await db.execute(select(User).where(User.username == payload.username))
+    result = await db.execute(select(User).where(User.username == form.username))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(payload.password, user.password_hash):
+    if not user or not user.is_active or not verify_password(form.password, user.password_hash):
         raise HTTPException(
-            detail="Invalid credentials.",
             status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials.",
         )
-    access_token = create_access_token(data={"sub": str(user.id)})
-    return Token(access_token=access_token)
+    return Token(access_token=create_access_token(data={"sub": str(user.id)}))
 
 
 @router.post("/refresh", response_model=Token)
@@ -88,16 +76,7 @@ async def refresh(
     current_user: User = Depends(get_current_user),
     redis: Redis = Depends(get_redis),
 ) -> Token:
-    """Issue a new access token and revoke the current one.
-
-    Args:
-        creds: Current Bearer token.
-        current_user: Authenticated user.
-        redis: Async Redis client.
-
-    Returns:
-        New JWT access token.
-    """
+    """Issue a new access token and revoke the current one."""
     payload = decode_access_token(creds.credentials)
     assert payload is not None
     old_jti = payload["jti"]
@@ -113,12 +92,7 @@ async def logout(
     _: User = Depends(get_current_user),
     redis: Redis = Depends(get_redis),
 ) -> None:
-    """Revoke the current access token.
-
-    Args:
-        creds: Current Bearer token.
-        redis: Async Redis client.
-    """
+    """Blacklist the current access token."""
     payload = decode_access_token(creds.credentials)
     assert payload is not None
     jti = payload["jti"]

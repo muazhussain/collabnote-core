@@ -6,6 +6,12 @@ _OTHER_USER = {
     "password": "otherpassword123",
 }
 
+_NOTE_PAYLOAD = {
+    "title": "Test Note",
+    "content": "Test content.",
+    "tags": ["test"],
+}
+
 
 class TestGetProfile:
     async def test_success(self, client: AsyncClient, auth_headers: dict) -> None:
@@ -37,6 +43,40 @@ class TestGetUser:
 
     async def test_unauthenticated(self, client: AsyncClient) -> None:
         resp = await client.get("/api/v1/users/1")
+        assert resp.status_code == 401
+
+
+class TestGetUserNotes:
+    async def test_success(self, client: AsyncClient, auth_headers: dict) -> None:
+        profile = (
+            await client.get("/api/v1/users/profile", headers=auth_headers)
+        ).json()
+        await client.post("/api/v1/notes", json=_NOTE_PAYLOAD, headers=auth_headers)
+        resp = await client.get(
+            f"/api/v1/users/{profile['id']}/notes", headers=auth_headers
+        )
+        assert resp.status_code == 200
+        notes = resp.json()
+        assert len(notes) == 1
+        assert notes[0]["title"] == _NOTE_PAYLOAD["title"]
+        assert notes[0]["tags"] == _NOTE_PAYLOAD["tags"]
+
+    async def test_empty(self, client: AsyncClient, auth_headers: dict) -> None:
+        profile = (
+            await client.get("/api/v1/users/profile", headers=auth_headers)
+        ).json()
+        resp = await client.get(
+            f"/api/v1/users/{profile['id']}/notes", headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_user_not_found(self, client: AsyncClient, auth_headers: dict) -> None:
+        resp = await client.get("/api/v1/users/99999/notes", headers=auth_headers)
+        assert resp.status_code == 404
+
+    async def test_unauthenticated(self, client: AsyncClient) -> None:
+        resp = await client.get("/api/v1/users/1/notes")
         assert resp.status_code == 401
 
 
@@ -72,7 +112,7 @@ class TestUpdateProfile:
         assert resp.status_code == 200
         login = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "newpassword123"},
+            data={"username": "testuser", "password": "newpassword123"},
         )
         assert login.status_code == 200
 
@@ -86,7 +126,7 @@ class TestUpdateProfile:
     async def test_duplicate_email(
         self, client: AsyncClient, auth_headers: dict
     ) -> None:
-        await client.post("/api/v1/auth/register", json=_OTHER_USER)
+        await client.post("/api/v1/auth/signup", json=_OTHER_USER)
         resp = await client.patch(
             "/api/v1/users/profile",
             json={"email": _OTHER_USER["email"]},
@@ -97,7 +137,7 @@ class TestUpdateProfile:
     async def test_duplicate_username(
         self, client: AsyncClient, auth_headers: dict
     ) -> None:
-        await client.post("/api/v1/auth/register", json=_OTHER_USER)
+        await client.post("/api/v1/auth/signup", json=_OTHER_USER)
         resp = await client.patch(
             "/api/v1/users/profile",
             json={"username": _OTHER_USER["username"]},
@@ -123,7 +163,7 @@ class TestDeleteProfile:
         await client.delete("/api/v1/users/profile", headers=auth_headers)
         resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "testpassword123"},
+            data={"username": "testuser", "password": "testpassword123"},
         )
         assert resp.status_code == 401
 
