@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import jwt
 from argon2 import PasswordHasher
@@ -39,7 +38,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(data: dict, expire_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expire_delta: timedelta | None = None) -> str:
     """Create a signed JWT access token.
 
     Args:
@@ -57,7 +56,7 @@ def create_access_token(data: dict, expire_delta: Optional[timedelta] = None) ->
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> dict | None:
     """Decode and validate JWT access token.
 
     Args:
